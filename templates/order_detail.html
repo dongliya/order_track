@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+{% block title %}订单详情 | OrderFlow{% endblock %}
+{% block content %}
+<section class="section-head">
+  <div>
+    <p class="eyebrow">Order Detail</p>
+    <h1 class="section-title">{{ order.order_no }}</h1>
+    <p class="lede">{{ order.customer_name }} / {{ order.project_name }}</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button ghost" href="/orders">返回列表</a>
+    <a class="button primary" href="/orders/{{ order.id }}/edit">编辑订单</a>
+  </div>
+</section>
+
+<section class="summary-grid">
+  <article class="stat-card accent"><span>订单金额</span><strong>{{ order.order_amount|money }}</strong></article>
+  <article class="stat-card"><span>已付款金额</span><strong>{{ order.paid_amount|money }}</strong></article>
+  <article class="stat-card"><span>已开票金额</span><strong>{{ order.invoice_amount|money }}</strong></article>
+</section>
+
+<section class="panel">
+  <div class="tab-row">
+    {% for key, label in [("overview", "基本信息"), ("products", "产品信息"), ("shipments", "发货信息"), ("payments", "付款信息"), ("invoices", "发票信息"), ("logs", "操作日志")] %}
+    <a class="tab {% if tab == key %}active{% endif %}" href="/orders/{{ order.id }}?tab={{ key }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  {% if tab == "overview" %}
+  <div class="overview-layout">
+    <section class="overview-card overview-hero">
+      <div class="overview-card-head">
+        <div>
+          <p class="eyebrow">Overview</p>
+          <h3>订单概览</h3>
+        </div>
+        <span class="badge {% if order.order_status == '已完成' %}badge-success{% elif order.order_status == '已暂停' %}badge-warn{% elif order.order_status == '已作废' %}badge-danger{% else %}badge-muted{% endif %}">{{ order.order_status }}</span>
+      </div>
+      <div class="overview-kv-grid">
+        <div class="overview-kv"><span>订单编号</span><strong>{{ order.order_no }}</strong></div>
+        <div class="overview-kv"><span>订单日期</span><strong>{{ order.order_date }}</strong></div>
+        <div class="overview-kv"><span>客户名称</span><strong>{{ order.customer_name }}</strong></div>
+        <div class="overview-kv"><span>操作人</span><strong>{{ order.operator_name or "-" }}</strong></div>
+        <div class="overview-kv full"><span>项目名称</span><strong>{{ order.project_name }}</strong></div>
+      </div>
+      <div class="overview-contract-line">
+        <span>合同附件</span>
+        <strong>
+          {% if order.contract_file_path %}
+          <span class="action-links contract-actions">
+            <a class="text-link" href="/orders/{{ order.id }}/contract/download">下载</a> /
+            <a class="text-link" href="/orders/{{ order.id }}/contract/view" target="_blank" rel="noopener noreferrer">查看</a> /
+            <form method="post" action="/orders/{{ order.id }}/contract/delete" class="inline-form" data-confirm="确认删除合同附件吗？">
+              <button class="button-link danger-text" type="submit">删除</button>
+            </form>
+          </span>
+          {% else %}-{% endif %}
+        </strong>
+      </div>
+    </section>
+
+    <section class="overview-card overview-status-card">
+      <div class="overview-card-head">
+        <div>
+          <p class="eyebrow">Status</p>
+          <h3>执行状态</h3>
+        </div>
+      </div>
+      <div class="status-chip-grid">
+        <article class="status-chip"><span>产品</span><strong>{{ order.product_status }}</strong></article>
+        <article class="status-chip"><span>发货</span><strong>{{ order.shipment_status }}</strong></article>
+        <article class="status-chip"><span>付款</span><strong>{{ order.payment_status }}</strong></article>
+        <article class="status-chip"><span>开票</span><strong>{{ order.invoice_status }}</strong></article>
+      </div>
+      <div class="overview-time-list">
+        <div><span>创建时间</span><strong>{{ order.created_at.strftime("%Y-%m-%d %H:%M") }}</strong></div>
+        <div><span>更新时间</span><strong>{{ order.updated_at.strftime("%Y-%m-%d %H:%M") }}</strong></div>
+      </div>
+    </section>
+  </div>
+  <div class="remark-card overview-remark">
+    <span>备注说明</span>
+    <p>{{ order.remark or "暂无备注" }}</p>
+  </div>
+  {% endif %}
+
+  {% if tab == "products" %}
+  {% set product = editing.product %}
+  <div class="panel-head section-toolbar">
+    <div>
+      <p class="eyebrow">Product Records</p>
+      <h3>产品记录</h3>
+    </div>
+    <div class="hero-actions">
+      {% if product or show_new.product %}
+      <a class="button ghost compact" href="/orders/{{ order.id }}?tab=products">收起表单</a>
+      {% endif %}
+      <a class="button primary compact" href="/orders/{{ order.id }}?tab=products&new_product=1">新增产品</a>
+    </div>
+  </div>
+  <div class="{% if product or show_new.product %}side-layout{% endif %}">
+    <div class="table-wrap side-table">
+      <table>
+        <thead>
+          <tr>
+            <th>产品编号</th>
+            <th>产品名称</th>
+            <th>单价</th>
+            <th>数量</th>
+            <th>金额</th>
+            <th>备注</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order.products %}
+          <tr>
+            <td>{{ item.product_no or "-" }}</td>
+            <td>{{ item.product_name }}</td>
+            <td>{{ item.unit_price|money if item.unit_price is not none else "-" }}</td>
+            <td>{{ item.quantity|int if item.quantity is not none else "-" }}</td>
+            <td>{{ item.product_amount|money if item.product_amount is not none else "-" }}</td>
+            <td>{{ item.remark or "-" }}</td>
+            <td class="action-links">
+              <a class="text-link" href="/orders/{{ order.id }}?tab=products&edit_product_id={{ item.id }}">编辑</a>
+              <form method="post" action="/orders/{{ order.id }}/products/{{ item.id }}/delete" data-confirm="确认删除该产品记录吗？">
+                <button class="button-link danger-text" type="submit">删除</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="empty-cell">暂无产品记录。</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if product or show_new.product %}
+    <form method="post" action="/orders/{{ order.id }}/products" class="stack form-card side-form">
+      <input type="hidden" name="product_id" value="{{ product.id if product else '' }}" />
+      <h3>{{ "编辑产品" if product else "新增产品" }}</h3>
+      <label class="full">
+        <span>选择产品</span>
+        <select name="catalog_id" id="catalog_id" required>
+          <option value="">请选择</option>
+          {% for catalog in product_catalogs %}
+          <option
+            value="{{ catalog.id }}"
+            data-product-no="{{ catalog.product_no or '' }}"
+            data-product-name="{{ catalog.product_name }}"
+            data-unit-price="{{ catalog.unit_price if catalog.unit_price is not none else '' }}"
+            {% if product and product.catalog_id == catalog.id %}selected{% endif %}
+          >
+            {{ catalog.product_no ~ " / " if catalog.product_no else "" }}{{ catalog.product_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <label><span>编号</span><input id="selected_product_no" value="{{ product.product_no if product else '' }}" readonly /></label>
+      <label><span>名称</span><input id="selected_product_name" value="{{ product.product_name if product else '' }}" readonly /></label>
+      <label>
+        <span>单价</span>
+        <input
+          id="selected_unit_price"
+          name="unit_price"
+          type="number"
+          step="0.01"
+          min="0"
+          value="{{ product.unit_price if product and product.unit_price is not none else '' }}"
+          placeholder="默认带出参考单价，可手动修改"
+        />
+      </label>
+      <label><span>数量</span><input id="product_quantity" type="number" step="1" min="0" name="quantity" value="{{ product.quantity|int if product and product.quantity is not none else '' }}" /></label>
+      <label><span>金额</span><input id="product_amount" type="number" step="0.01" min="0" name="product_amount" value="{{ product.product_amount if product and product.product_amount is not none else '' }}" /></label>
+      <label class="full"><span>备注</span><textarea name="remark" rows="4">{{ product.remark if product else '' }}</textarea></label>
+      <button class="button primary" type="submit">保存产品</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if tab == "shipments" %}
+  {% set shipment = editing.shipment %}
+  <div class="panel-head section-toolbar">
+    <div>
+      <p class="eyebrow">Shipment Log</p>
+      <h3>发货记录</h3>
+    </div>
+    <div class="hero-actions">
+      {% if shipment or show_new.shipment %}
+      <a class="button ghost compact" href="/orders/{{ order.id }}?tab=shipments">收起表单</a>
+      {% endif %}
+      <a class="button primary compact" href="/orders/{{ order.id }}?tab=shipments&new_shipment=1">新增发货</a>
+    </div>
+  </div>
+  <div class="{% if shipment or show_new.shipment %}side-layout{% endif %}">
+    <div class="table-wrap side-table">
+      <table>
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>批次</th>
+            <th>发货状态</th>
+            <th>发货内容</th>
+            <th>收货信息</th>
+            <th>物流信息</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order.shipments %}
+          <tr>
+            <td>{{ item.shipment_date or "-" }}</td>
+            <td>{{ item.shipment_batch or "-" }}</td>
+            <td>{{ item.shipment_status or "-" }}</td>
+            <td class="multiline-cell">{{ item.shipment_content or "-" }}</td>
+            <td class="multiline-cell">{{ item.receiver_info or "-" }}</td>
+            <td class="multiline-cell">
+              <div>{{ item.logistics_company or "-" }}</div>
+              <div>{{ item.tracking_no or "-" }}</div>
+            </td>
+            <td class="action-links">
+              <a class="text-link" href="/orders/{{ order.id }}?tab=shipments&edit_shipment_id={{ item.id }}">编辑</a>
+              <form method="post" action="/orders/{{ order.id }}/shipments/{{ item.id }}/delete" data-confirm="确认删除该发货记录吗？">
+                <button class="button-link danger-text" type="submit">删除</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="empty-cell">暂无发货记录。</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if shipment or show_new.shipment %}
+    <form method="post" action="/orders/{{ order.id }}/shipments" class="stack form-card side-form">
+      <input type="hidden" name="shipment_id" value="{{ shipment.id if shipment else '' }}" />
+      <h3>{{ "编辑发货" if shipment else "新增发货" }}</h3>
+      <label><span>发货日期</span><input type="date" name="shipment_date" value="{{ shipment.shipment_date.isoformat() if shipment and shipment.shipment_date else '' }}" /></label>
+      <label><span>发货批次</span><input name="shipment_batch" value="{{ shipment.shipment_batch if shipment else '' }}" /></label>
+      <label>
+        <span>发货状态</span>
+        <select name="shipment_status">
+          {% for item in ["已发货", "部分发货"] %}
+          <option value="{{ item }}" {% if shipment and shipment.shipment_status == item %}selected{% elif not shipment and item == "已发货" %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label><span>发货内容</span><textarea name="shipment_content" rows="3">{{ shipment.shipment_content if shipment else '' }}</textarea></label>
+      <label class="full"><span>收货信息</span><textarea name="receiver_info" rows="3">{{ shipment.receiver_info if shipment else '' }}</textarea></label>
+      <label><span>物流公司</span><input name="logistics_company" value="{{ shipment.logistics_company if shipment else '' }}" /></label>
+      <label><span>物流单号</span><input name="tracking_no" value="{{ shipment.tracking_no if shipment else '' }}" /></label>
+      <label><span>备注</span><textarea name="remark" rows="3">{{ shipment.remark if shipment else '' }}</textarea></label>
+      <button class="button primary" type="submit">保存发货</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if tab == "payments" %}
+  {% set payment = editing.payment %}
+  <div class="panel-head section-toolbar">
+    <div>
+      <p class="eyebrow">Payment Records</p>
+      <h3>付款记录</h3>
+    </div>
+    <div class="hero-actions">
+      {% if payment or show_new.payment %}
+      <a class="button ghost compact" href="/orders/{{ order.id }}?tab=payments">收起表单</a>
+      {% endif %}
+      <a class="button primary compact" href="/orders/{{ order.id }}?tab=payments&new_payment=1">新增付款</a>
+    </div>
+  </div>
+  <div class="{% if payment or show_new.payment %}side-layout{% endif %}">
+    <div class="table-wrap side-table">
+      <table>
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>阶段</th>
+            <th>金额</th>
+            <th>付款方式</th>
+            <th>备注</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order.payments %}
+          <tr>
+            <td>{{ item.payment_date or "-" }}</td>
+            <td>{{ item.payment_stage or "-" }}</td>
+            <td>{{ item.payment_amount|money }}</td>
+            <td>{{ item.payment_method or "-" }}</td>
+            <td>{{ item.remark or "-" }}</td>
+            <td class="action-links">
+              <a class="text-link" href="/orders/{{ order.id }}?tab=payments&edit_payment_id={{ item.id }}">编辑</a>
+              <form method="post" action="/orders/{{ order.id }}/payments/{{ item.id }}/delete" data-confirm="确认删除该付款记录吗？">
+                <button class="button-link danger-text" type="submit">删除</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="empty-cell">暂无付款记录。</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if payment or show_new.payment %}
+    <form method="post" action="/orders/{{ order.id }}/payments" class="stack form-card side-form">
+      <input type="hidden" name="payment_id" value="{{ payment.id if payment else '' }}" />
+      <h3>{{ "编辑付款" if payment else "新增付款" }}</h3>
+      <label><span>付款日期</span><input type="date" name="payment_date" value="{{ payment.payment_date.isoformat() if payment and payment.payment_date else '' }}" /></label>
+      <label><span>付款阶段</span><input name="payment_stage" value="{{ payment.payment_stage if payment else '' }}" placeholder="首付款 / 中期款 / 尾款" /></label>
+      <label><span>付款金额</span><input type="number" step="0.01" min="0" max="{{ order.order_amount }}" name="payment_amount" value="{{ payment.payment_amount if payment else '' }}" required data-limit-label="付款金额" /></label>
+      <label><span>付款方式</span><input name="payment_method" value="{{ payment.payment_method if payment else '' }}" /></label>
+      <label><span>备注</span><textarea name="remark" rows="4">{{ payment.remark if payment else '' }}</textarea></label>
+      <button class="button primary" type="submit">保存付款</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if tab == "invoices" %}
+  {% set invoice = editing.invoice %}
+  <div class="panel-head section-toolbar">
+    <div>
+      <p class="eyebrow">Invoice Records</p>
+      <h3>发票记录</h3>
+    </div>
+    <div class="hero-actions">
+      {% if invoice or show_new.invoice %}
+      <a class="button ghost compact" href="/orders/{{ order.id }}?tab=invoices">收起表单</a>
+      {% endif %}
+      <a class="button primary compact" href="/orders/{{ order.id }}?tab=invoices&new_invoice=1">新增发票</a>
+    </div>
+  </div>
+  <div class="{% if invoice or show_new.invoice %}side-layout{% endif %}">
+    <div class="table-wrap side-table">
+      <table>
+        <thead>
+          <tr>
+            <th>发票号码</th>
+            <th>开票日期</th>
+            <th>金额</th>
+            <th>类型</th>
+            <th>备注</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order.invoices %}
+          <tr>
+            <td>{{ item.invoice_no or "-" }}</td>
+            <td>{{ item.invoice_date or "-" }}</td>
+            <td>{{ item.invoice_amount|money }}</td>
+            <td>{{ item.invoice_type or "-" }}</td>
+            <td>{{ item.remark or "-" }}</td>
+            <td class="action-links">
+              <a class="text-link" href="/orders/{{ order.id }}?tab=invoices&edit_invoice_id={{ item.id }}">编辑</a>
+              <form method="post" action="/orders/{{ order.id }}/invoices/{{ item.id }}/delete" data-confirm="确认删除该发票记录吗？">
+                <button class="button-link danger-text" type="submit">删除</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="empty-cell">暂无发票记录。</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if invoice or show_new.invoice %}
+    <form method="post" action="/orders/{{ order.id }}/invoices" class="stack form-card side-form">
+      <input type="hidden" name="invoice_id" value="{{ invoice.id if invoice else '' }}" />
+      <h3>{{ "编辑发票" if invoice else "新增发票" }}</h3>
+      <label><span>发票号码</span><input name="invoice_no" value="{{ invoice.invoice_no if invoice else '' }}" /></label>
+      <label><span>开票日期</span><input type="date" name="invoice_date" value="{{ invoice.invoice_date.isoformat() if invoice and invoice.invoice_date else '' }}" /></label>
+      <label><span>开票金额</span><input type="number" step="0.01" min="0" max="{{ order.order_amount }}" name="invoice_amount" value="{{ invoice.invoice_amount if invoice else '' }}" required data-limit-label="开票金额" /></label>
+      <label><span>发票类型</span><input name="invoice_type" value="{{ invoice.invoice_type if invoice else '' }}" placeholder="专票 / 普票" /></label>
+      <label><span>备注</span><textarea name="remark" rows="4">{{ invoice.remark if invoice else '' }}</textarea></label>
+      <button class="button primary" type="submit">保存发票</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if tab == "logs" %}
+  <div class="panel-head section-toolbar">
+    <div>
+      <p class="eyebrow">Operation Logs</p>
+      <h3>操作日志</h3>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>操作人</th>
+          <th>类型</th>
+          <th>内容</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in order.operation_logs %}
+        <tr>
+          <td>{{ item.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+          <td>{{ item.operator_name or "-" }}</td>
+          <td>{{ item.action_type }}</td>
+          <td>{{ item.content }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty-cell">暂无操作日志。</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
+<script>
+  (() => {
+    const select = document.getElementById("catalog_id");
+    if (!select) return;
+    const productNo = document.getElementById("selected_product_no");
+    const productName = document.getElementById("selected_product_name");
+    const unitPrice = document.getElementById("selected_unit_price");
+    const quantity = document.getElementById("product_quantity");
+    const amount = document.getElementById("product_amount");
+
+    const updateAmount = () => {
+      if (!quantity || !amount) return;
+      const unit = Number.parseFloat(unitPrice.value);
+      const qty = Number.parseFloat(quantity.value);
+      if (Number.isNaN(unit) || Number.isNaN(qty)) {
+        amount.value = "";
+        return;
+      }
+      amount.value = (unit * qty).toFixed(2);
+    };
+
+    const syncCatalogFields = () => {
+      const option = select.options[select.selectedIndex];
+      if (!option) return;
+      productNo.value = option.dataset.productNo || "";
+      productName.value = option.dataset.productName || "";
+      unitPrice.value = option.dataset.unitPrice || "";
+      updateAmount();
+    };
+
+    select.addEventListener("change", syncCatalogFields);
+    if (quantity) {
+      quantity.addEventListener("input", updateAmount);
+    }
+    if (unitPrice) {
+      unitPrice.addEventListener("input", updateAmount);
+    }
+    syncCatalogFields();
+  })();
+</script>
+<script>
+  (() => {
+    const limitedInputs = document.querySelectorAll("input[data-limit-label]");
+    limitedInputs.forEach((input) => {
+      const label = input.dataset.limitLabel || "金额";
+      const max = input.getAttribute("max") || "";
+
+      const syncMessage = () => {
+        input.setCustomValidity("");
+        if (input.validity.valueMissing) {
+          input.setCustomValidity(`请输入${label}`);
+          return;
+        }
+        if (input.validity.rangeOverflow) {
+          input.setCustomValidity(`${label}不能大于订单金额（${max}）`);
+        }
+      };
+
+      input.addEventListener("input", syncMessage);
+      input.addEventListener("invalid", syncMessage);
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}首页 | OrderFlow{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Order Ledger</p>
+    <h1>订单执行全景台账</h1>
+    <p class="lede">首页聚合订单、发货、付款和开票状态，适合内部团队快速查阅与维护。</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button primary" href="/orders/new">新增订单</a>
+    <a class="button ghost" href="/orders">查看订单列表</a>
+  </div>
+</section>
+
+<section class="home-overview-grid">
+  <article class="panel home-kpi-main">
+    <p class="eyebrow">Finance Snapshot</p>
+    <h2>订单总金额 {{ stats.order_amount_total|money }}</h2>
+    <p class="home-kpi-main-note">订单金额由产品金额自动汇总，已与订单明细保持同步。</p>
+    <div class="home-inline-metrics">
+      <div>
+        <span>订单总数</span>
+        <strong>{{ stats.order_total }}</strong>
+      </div>
+    </div>
+  </article>
+  <article class="stat-card home-kpi-card">
+    <span>累计回款</span>
+    <strong>{{ stats.paid_amount_total|money }}</strong>
+    <p class="kpi-note">已登记付款记录合计</p>
+  </article>
+  <article class="stat-card home-kpi-card warn">
+    <span>未回款金额</span>
+    <strong>{{ stats.unpaid_amount_total|money }}</strong>
+    <p class="kpi-note">订单总金额 - 累计回款</p>
+  </article>
+</section>
+
+{% set order_total = stats.order_total if stats.order_total > 0 else 1 %}
+<section class="panel home-progress">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Pipeline</p>
+      <h2>订单执行进度</h2>
+    </div>
+  </div>
+  <div class="home-progress-grid">
+    <article class="progress-card">
+      <div class="progress-head">
+        <span>发货完成</span>
+        <strong>{{ stats.shipment_done_total }} / {{ stats.order_total }}</strong>
+      </div>
+      <div class="progress-track"><span style="width: {{ ((stats.shipment_done_total / order_total) * 100)|round(0, 'floor') }}%"></span></div>
+    </article>
+    <article class="progress-card">
+      <div class="progress-head">
+        <span>付款完成</span>
+        <strong>{{ stats.payment_done_total }} / {{ stats.order_total }}</strong>
+      </div>
+      <div class="progress-track"><span style="width: {{ ((stats.payment_done_total / order_total) * 100)|round(0, 'floor') }}%"></span></div>
+    </article>
+    <article class="progress-card">
+      <div class="progress-head">
+        <span>开票完成</span>
+        <strong>{{ stats.invoice_done_total }} / {{ stats.order_total }}</strong>
+      </div>
+      <div class="progress-track"><span style="width: {{ ((stats.invoice_done_total / order_total) * 100)|round(0, 'floor') }}%"></span></div>
+    </article>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Recent</p>
+      <h2>最近新增订单</h2>
+    </div>
+    <a class="button ghost compact" href="/orders">进入完整列表</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>订单编号</th>
+          <th>客户名称</th>
+          <th>项目名称</th>
+          <th>订单金额</th>
+          <th>发货 / 付款 / 开票</th>
+          <th>操作人</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in stats.recent_orders %}
+        <tr>
+          <td>{{ order.order_no }}</td>
+          <td>{{ order.customer_name }}</td>
+          <td>{{ order.project_name }}</td>
+          <td>{{ order.order_amount|money }}</td>
+          <td>{{ order.shipment_status }} / {{ order.payment_status }} / {{ order.invoice_status }}</td>
+          <td>{{ order.operator_name or "-" }}</td>
+          <td><a class="text-link" href="/orders/{{ order.id }}">查看</a></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="empty-cell">当前还没有订单，先创建一条订单记录吧。</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}已作废订单 | OrderFlow{% endblock %}
+{% block content %}
+<section class="section-head">
+  <div>
+    <p class="eyebrow">Deleted Orders</p>
+    <h1 class="section-title">已作废订单</h1>
+  </div>
+  <div class="hero-actions">
+    <a class="button ghost" href="/orders">返回订单列表</a>
+  </div>
+</section>
+
+<section class="panel">
+  <form class="filter-grid" method="get" action="/orders/deleted">
+    <label><span>订单编号</span><input name="order_no" value="{{ filters.order_no }}" /></label>
+    <label><span>客户名称</span><input name="customer_name" value="{{ filters.customer_name }}" /></label>
+    <label><span>项目名称</span><input name="project_name" value="{{ filters.project_name }}" /></label>
+    <label><span>开始日期</span><input name="date_from" type="date" value="{{ filters.date_from }}" /></label>
+    <label><span>结束日期</span><input name="date_to" type="date" value="{{ filters.date_to }}" /></label>
+    <label>
+      <span>产品状态</span>
+      <select name="product_status">
+        <option value="">全部</option>
+        {% for item in ["未录入", "已录入"] %}
+        <option value="{{ item }}" {% if filters.product_status == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>发货状态</span>
+      <select name="shipment_status">
+        <option value="">全部</option>
+        {% for item in ["未发货", "部分发货", "已发货"] %}
+        <option value="{{ item }}" {% if filters.shipment_status == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>付款状态</span>
+      <select name="payment_status">
+        <option value="">全部</option>
+        {% for item in ["未付款", "部分付款", "已付款"] %}
+        <option value="{{ item }}" {% if filters.payment_status == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>开票状态</span>
+      <select name="invoice_status">
+        <option value="">全部</option>
+        {% for item in ["未开票", "部分开票", "已开票"] %}
+        <option value="{{ item }}" {% if filters.invoice_status == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      <span>订单状态</span>
+      <select name="order_status">
+        <option value="">全部</option>
+        {% for item in ["执行中", "已完成", "已暂停", "已作废"] %}
+        <option value="{{ item }}" {% if filters.order_status == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="filter-actions">
+      <button class="button primary" type="submit">筛选</button>
+      <a class="button ghost" href="/orders/deleted">重置</a>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>订单编号</th>
+          <th>客户名称</th>
+          <th>项目名称</th>
+          <th>订单金额</th>
+          <th>已付款</th>
+          <th>已开票</th>
+          <th class="status-column">状态</th>
+          <th>订单日期</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr>
+          <td>{{ order.order_no }}</td>
+          <td>{{ order.customer_name }}</td>
+          <td>{{ order.project_name }}</td>
+          <td>{{ order.order_amount|money }}</td>
+          <td>{{ order.paid_amount|money }}</td>
+          <td>{{ order.invoice_amount|money }}</td>
+          <td class="status-column">
+            <div class="badge-stack">
+              <span class="badge {% if order.product_status == '已录入' %}badge-success{% else %}badge-muted{% endif %}">{{ order.product_status }}</span>
+              <span class="badge {% if order.shipment_status == '已发货' %}badge-success{% elif order.shipment_status == '部分发货' %}badge-warn{% else %}badge-muted{% endif %}">{{ order.shipment_status }}</span>
+              <span class="badge {% if order.payment_status == '已付款' %}badge-success{% elif order.payment_status == '部分付款' %}badge-warn{% else %}badge-danger{% endif %}">{{ order.payment_status }}</span>
+              <span class="badge {% if order.invoice_status == '已开票' %}badge-success{% elif order.invoice_status == '部分开票' %}badge-warn{% else %}badge-muted{% endif %}">{{ order.invoice_status }}</span>
+            </div>
+          </td>
+          <td>{{ order.order_date }}</td>
+          <td class="action-links">
+            <form method="post" action="/orders/{{ order.id }}/restore" data-confirm="确认恢复该订单吗？">
+              <button class="button-link text-link" type="submit">恢复</button>
+            </form>
+            <form method="post" action="/orders/{{ order.id }}/purge" data-confirm="确认彻底删除该订单吗？该操作不可恢复。">
+              <button class="button-link danger-text" type="submit">彻底删除</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="empty-cell">暂无已作废订单。</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="list-footer">
+    <p class="result-summary">共 {{ pagination.total_count }} 条，第 {{ pagination.page }} / {{ pagination.total_pages }} 页</p>
+    {% if pagination.total_pages > 1 %}
+    <nav class="pagination" aria-label="已作废订单分页">
+      {% if pagination.has_prev %}
+      <a class="page-link" href="{{ request.url.include_query_params(page=pagination.page - 1) }}">上一页</a>
+      {% else %}
+      <span class="page-link disabled">上一页</span>
+      {% endif %}
+
+      {% for page_number in pagination.page_numbers %}
+      <a class="page-link {% if page_number == pagination.page %}active{% endif %}" href="{{ request.url.include_query_params(page=page_number) }}">{{ page_number }}</a>
+      {% endfor %}
+
+      {% if pagination.has_next %}
+      <a class="page-link" href="{{ request.url.include_query_params(page=pagination.page + 1) }}">下一页</a>
+      {% else %}
+      <span class="page-link disabled">下一页</span>
+      {% endif %}
+    </nav>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

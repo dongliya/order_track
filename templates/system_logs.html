@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}系统日志 | OrderFlow{% endblock %}
+{% block content %}
+<section class="section-head">
+  <div>
+    <p class="eyebrow">System Logs</p>
+    <h1 class="section-title">系统日志</h1>
+  </div>
+  <a class="button ghost" href="/">返回首页</a>
+</section>
+
+<section class="panel stack">
+  <form method="get" action="/system/logs" class="filter-grid">
+    <label>
+      <span>订单编号</span>
+      <input name="order_no" value="{{ filters.order_no }}" placeholder="输入订单编号" />
+    </label>
+    <label>
+      <span>操作人</span>
+      <input name="operator_name" value="{{ filters.operator_name }}" placeholder="输入操作人" />
+    </label>
+    <label>
+      <span>模块</span>
+      <select name="module_name">
+        <option value="">全部模块</option>
+        {% for item in ["用户管理", "产品管理", "订单管理"] %}
+        <option value="{{ item }}" {% if filters.module_name == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="full">
+      <span>关键字</span>
+      <input name="keyword" value="{{ filters.keyword }}" placeholder="搜索日志内容" />
+    </label>
+    <div class="filter-actions full">
+      <button class="button primary" type="submit">筛选日志</button>
+      <a class="button ghost" href="/system/logs">重置</a>
+    </div>
+  </form>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>订单编号</th>
+          <th>操作人</th>
+          <th>模块</th>
+          <th>内容</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in logs %}
+        <tr>
+          <td>{{ item.created_at.strftime("%Y-%m-%d %H:%M:%S") if item.created_at else "-" }}</td>
+          <td>{{ item.order_no or "-" }}</td>
+          <td>{{ item.operator_name or "-" }}</td>
+          <td>{{ item.module_name }}</td>
+          <td class="multiline-cell">{{ item.content }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="empty-cell">暂无系统日志。</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="list-footer">
+    <p class="result-summary">共 {{ pagination.total_count }} 条日志，当前第 {{ pagination.page }} / {{ pagination.total_pages }} 页</p>
+    <div class="pagination">
+      <a
+        class="page-link {% if not pagination.has_prev %}disabled{% endif %}"
+        href="/system/logs?order_no={{ filters.order_no }}&operator_name={{ filters.operator_name }}&module_name={{ filters.module_name }}&keyword={{ filters.keyword }}&page={{ pagination.page - 1 if pagination.has_prev else 1 }}"
+      >
+        上一页
+      </a>
+      {% for page_no in pagination.page_numbers %}
+      <a
+        class="page-link {% if page_no == pagination.page %}active{% endif %}"
+        href="/system/logs?order_no={{ filters.order_no }}&operator_name={{ filters.operator_name }}&module_name={{ filters.module_name }}&keyword={{ filters.keyword }}&page={{ page_no }}"
+      >
+        {{ page_no }}
+      </a>
+      {% endfor %}
+      <a
+        class="page-link {% if not pagination.has_next %}disabled{% endif %}"
+        href="/system/logs?order_no={{ filters.order_no }}&operator_name={{ filters.operator_name }}&module_name={{ filters.module_name }}&keyword={{ filters.keyword }}&page={{ pagination.page + 1 if pagination.has_next else pagination.total_pages }}"
+      >
+        下一页
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}

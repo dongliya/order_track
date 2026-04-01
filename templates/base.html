@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}OrderFlow{% endblock %}</title>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}" />
+  </head>
+  <body>
+    <div class="texture texture-a"></div>
+    <div class="texture texture-b"></div>
+    {% if current_user %}
+    <header class="shell topbar">
+      <a class="brand" href="/">
+        <span>OrderFlow</span>
+        <small>订单 · 产品 · 发货 · 付款 · 发票</small>
+      </a>
+      <nav class="nav">
+        <a href="/">首页</a>
+        <a href="/orders">订单台账</a>
+        {% if current_user.role == "admin" %}
+        <a href="/users/manage">用户管理</a>
+        <a href="/products/manage">产品管理</a>
+        <a href="/system/logs">系统日志</a>
+        {% endif %}
+      </nav>
+      <div class="topbar-user">
+        <span>{{ current_user.real_name }} / {{ "管理员" if current_user.role == "admin" else "普通用户" }}</span>
+        <form action="/logout" method="post">
+          <button class="button ghost" type="submit">退出</button>
+        </form>
+      </div>
+    </header>
+    {% endif %}
+    <main class="shell page-shell">
+      {% if flash %}
+      <div class="flash flash-{{ flash.level }}">{{ flash.message }}</div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+    <div class="confirm-modal" id="confirm-modal" hidden>
+      <div class="confirm-backdrop" data-confirm-cancel></div>
+      <div class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <h3 id="confirm-title">请确认操作</h3>
+        <p id="confirm-message">确认继续吗？</p>
+        <div class="confirm-actions">
+          <button class="button ghost" type="button" data-confirm-cancel>取消</button>
+          <button class="button danger" type="button" id="confirm-accept">确认</button>
+        </div>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const modal = document.getElementById("confirm-modal");
+        const messageNode = document.getElementById("confirm-message");
+        const acceptButton = document.getElementById("confirm-accept");
+        if (!modal || !messageNode || !acceptButton) return;
+
+        let pendingForm = null;
+
+        const closeModal = () => {
+          modal.hidden = true;
+          pendingForm = null;
+        };
+
+        document.addEventListener("submit", (event) => {
+          const form = event.target;
+          if (!(form instanceof HTMLFormElement)) return;
+          const message = form.dataset.confirm;
+          if (!message || form.dataset.confirmed === "1") {
+            form.dataset.confirmed = "";
+            return;
+          }
+          event.preventDefault();
+          pendingForm = form;
+          messageNode.textContent = message;
+          modal.hidden = false;
+        });
+
+        acceptButton.addEventListener("click", () => {
+          if (!pendingForm) return;
+          pendingForm.dataset.confirmed = "1";
+          pendingForm.requestSubmit();
+          closeModal();
+        });
+
+        modal.querySelectorAll("[data-confirm-cancel]").forEach((node) => {
+          node.addEventListener("click", closeModal);
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && !modal.hidden) {
+            closeModal();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
